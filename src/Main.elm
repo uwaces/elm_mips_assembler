@@ -1,5 +1,5 @@
 import Browser
-import Html exposing (Html, Attribute, div, input, text)
+import Html exposing (Html, Attribute, div, input, text, textarea)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Parser exposing (..)
@@ -42,12 +42,11 @@ update msg model =
 
 -- VIEW
 
-
 view : Model -> Html Msg
 view model =
   div []
     [ div [] [text "$zero and $at work!!! -- Make the boo a Woo"]
-    , input [ placeholder "Assembly to assemble", value model.content, onInput Change ] []
+    , textarea [ cols 80, rows 30, placeholder "Assembly to assemble", value model.content, onInput Change ] []
     , div [] [ text (assemble model.content) ]
     ]
 
@@ -91,6 +90,15 @@ type alias JType =
     { name  : String
     , imm   : Immediate
     }
+
+type Instruction
+    = R RType
+    | I IType
+    | J JType
+    
+type AssemblyLine
+    = AssemblyInstr Instruction
+    | AssemblyLabel String
 
 spaces : Parser ()
 spaces =
@@ -182,9 +190,58 @@ rtype =
         |. spaces
         |= register
 
+instruction : Parser Instruction
+instruction =
+    oneOf
+        [ succeed R |= rtype
+        , succeed I |= itype
+        , succeed I |= itypeBranch
+        , succeed J |= jtype
+        ]
+
+assemblyline : Parser AssemblyLine
+assemblyline =
+    oneOf
+        [ succeed AssemblyInstr |= instruction
+        , succeed AssemblyLabel |= target
+        ]
+
+liftOk : Result (List DeadEnd) AssemblyLine ->
+         Result (List DeadEnd) (List AssemblyLine) ->
+         Result (List DeadEnd) (List AssemblyLine)
+liftOk r1 rlist = 
+    case r1 of
+        Ok al1 -> case rlist of
+                    Ok l -> Ok <| al1::l
+                    Err e -> Err e
+        Err e -> Err e
+                 
+program : String -> Maybe (List AssemblyLine)
+program prog =
+    let lines = String.split "\n" <| String.trim prog
+        alines = List.map (run assemblyline) lines
+        res = List.foldr liftOk (Ok []) alines
+    in
+        case res of
+            Ok l -> Just l
+            Err _ -> Nothing
+
+instructionToString : Instruction -> String
+instructionToString instr =
+    case instr of
+        R r -> r.name ++ " " ++ regToString r.rd ++ ", " ++ regToString r.rs ++ ", " ++ regToString r.rt
+        I i -> i.name ++ " " ++ regToString i.rt ++ " " ++ immToString i.imm ++ "(" ++ regToString i.rs ++ ")"
+        J j -> j.name ++ " " ++ immToString j.imm
+
+assemblyLineToString : AssemblyLine -> String
+assemblyLineToString line =
+    case line of
+        AssemblyInstr instr -> instructionToString instr
+        AssemblyLabel l -> l
+
 assemble : String -> String
-assemble program =
-  case run rtype program of
-      Ok r -> r.name ++ " " ++ regToString r.rd ++ ", " ++ regToString r.rs ++ ", " ++ regToString r.rt
-      Err _ -> "BOO"
+assemble prog =
+  case program prog of
+      Just l -> String.join "\n" <| List.map assemblyLineToString l
+      Nothing -> ":("
 
