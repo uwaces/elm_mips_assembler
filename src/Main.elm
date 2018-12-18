@@ -2,7 +2,7 @@ import Browser
 import Html exposing (Html, Attribute, div, input, text)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
-import Parser exposing ((|.), (|=))
+import Parser exposing (..)
 
 
 -- MAIN
@@ -40,10 +40,6 @@ update msg model =
     Change newContent ->
       { model | content = newContent }
 
-
-
-
-
 -- VIEW
 
 
@@ -51,72 +47,144 @@ view : Model -> Html Msg
 view model =
   div []
     [ div [] [text "$zero and $at work!!! -- Make the boo a Woo"]
-    , input [ placeholder "Text to reverse", value model.content, onInput Change ] []
+    , input [ placeholder "Assembly to assemble", value model.content, onInput Change ] []
     , div [] [ text (assemble model.content) ]
     ]
 
 -- Assemble
+type Immediate
+    = Label String
+    | Value Int
+
+immToString : Immediate -> String
+immToString i =
+    case i of
+        Label l -> l
+        Value v -> String.fromInt v
 
 type Register
-  = Zero
-  | At
-  | V0
-  | V1
-  | A0
-  | A1
-  | A2
-  | A3
-  | T0
-  | T1
-  | T2
-  | T3
-  | T4
-  | T5
-  | T6
-  | T7
-  | S0
-  | S1
-  | S2
-  | S3
-  | S4
-  | S5
-  | S6
-  | S7
-  | T8
-  | T9
-  | K0
-  | K1
-  | Gp
-  | Sp
-  | Fp
-  | Ra
+  = Reg Int
 
-type alias RS = Register
-type alias RT = Register
-type alias RD = Register
+regToString : Register -> String
+regToString r =
+    case r of
+        Reg x -> String.fromInt x
 
---type Instruction
---  = I IOptCode RS RT RD ShiftAmount Function
---  | R ROptCode RS RT Imm
---  | J JOptCode Address
+type alias RType =
+    { name : String
+    , rd   : Register
+    , rs   : Register
+    , rt   : Register
+    }
 
---type IOptCode
---  = Addi
---  | Subi
+type alias IType =
+    { name  : String
+    , rt    : Register
+    , imm   : Immediate
+    , rs    : Register
+    }
 
-registerParser : Parser.Parser Register
-registerParser =
-  Parser.oneOf
-    [
-      Parser.succeed Zero
-        |. Parser.symbol "$zero"
-    , Parser.succeed At
-        |. Parser.symbol "$at"
-    ]
+makeITypeBranch : String -> Register -> Register -> Immediate -> IType
+makeITypeBranch name rs rt imm = IType name rt imm rs
+
+type alias JType =
+    { name  : String
+    , imm   : Immediate
+    }
+
+spaces : Parser ()
+spaces =
+    succeed ()
+        |. chompIf (\c -> c == ' ')
+        |. chompWhile (\c -> c == ' ')
+
+register : Parser Register
+register =
+    succeed Reg
+        |. symbol "$"
+        |= int
+
+label : Parser String
+label =
+    getChompedString <|
+        succeed ()
+            |. chompIf Char.isAlpha
+            |. chompWhile (\c -> Char.isAlpha c)
+
+target : Parser String
+target =
+    succeed identity
+        |= label
+        |. symbol ":"
+
+immediate : Parser Immediate
+immediate =
+    oneOf
+        [ succeed Value |= int
+        , succeed Label |= label
+        ]
+
+makeOpParser : String -> Parser String
+makeOpParser op =
+    succeed (\_ -> op) |= keyword op
+
+makeOperation : List String -> Parser String
+makeOperation ops =
+    oneOf <| List.map makeOpParser ops
+        
+roperation : Parser String
+roperation = makeOperation [ "add"
+                           , "sub"
+                           , "and"
+                           , "or"
+                           , "nor"
+                           , "slt"
+                           ]
+
+jtype : Parser JType
+jtype =
+    succeed JType
+        |= makeOperation [ "jmp" ]
+        |. spaces
+        |= immediate
+
+itype : Parser IType
+itype =
+    succeed IType
+        |= makeOperation [ "lw", "sw" ]
+        |. spaces
+        |= register
+        |. spaces
+        |= immediate
+        |. symbol "("
+        |= register
+        |. symbol ")"
+
+itypeBranch : Parser IType
+itypeBranch =
+    succeed makeITypeBranch
+        |= makeOperation [ "beq" ]
+        |. spaces
+        |= register
+        |. spaces
+        |= register
+        |. spaces
+        |= immediate
+
+rtype : Parser RType
+rtype =
+    succeed RType
+        |= roperation
+        |. spaces
+        |= register
+        |. spaces
+        |= register
+        |. spaces
+        |= register
 
 assemble : String -> String
 assemble program =
-  case Parser.run registerParser program of
-    Ok r -> "WOO"
-    Err _ -> "BOO"
+  case run rtype program of
+      Ok r -> r.name ++ " " ++ regToString r.rd ++ ", " ++ regToString r.rs ++ ", " ++ regToString r.rt
+      Err _ -> "BOO"
 
