@@ -25,7 +25,7 @@ type alias Model =
 
 init : Model
 init =
-  { content = "" }
+  { content = instructions }
 
 
 -- UPDATE
@@ -45,6 +45,20 @@ update msg model =
       { model | content = newContent }
 
 -- VIEW
+
+instructions = "# In this assembler labels and instructions must occupy their own line\n# The valid register names are:\n# $[0-31] or $zero, $at, $v[0-1], $a[0-3], $t[0-9], $s[0-7], $k[0-1], $gp,  $sp, $fp, $ra\n# This also supports a variety of instructions:\n"
+      ++ "# " ++ (String.join "" <| List.intersperse ", "
+        [ "and"
+        , "or"
+        , "add"
+        , "sub"
+        , "nor"
+        , "slt"
+        , "beq"
+        , "lw"
+        , "sw"
+        , "jmp"
+        ]) ++ "."
 
 lab3 = "lw $t2 0($z)\nL_ONE:\nbeq $t0 $t2 L_TWO\nsub $s0 $s0 $s1\nadd $t0 $t0 $t1\njmp L_ONE\nL_TWO:\nor $s2 $s0 $t3\nand $s2 $s2 $s3\nsw $s2 4($t3)\nnop"
 lab4 = "add $t2 $t0 $t1\nsw $t2 0x0($zero)\nsub $t3 $t0 $t1\nsw $t2 0x0($zero)\nsw $t3 0x4($t3)\nsw $t3 0x4($t3)\nor $s2 $s0 $s1\nnop\nnop\nsw $s2 0xC($zero)\nnop\nnop"
@@ -297,7 +311,7 @@ buildLabelDict xs =
 nameToOpcode : String -> String
 nameToOpcode name =
     case name of
-        "and" -> "000000" 
+        "and" -> "000000"
         "or" -> "000000"
         "add" -> "000000"
         "sub" -> "000000"
