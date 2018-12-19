@@ -27,6 +27,8 @@ init =
   { content = "" }
 
 
+assignment2 = "lw $t2 0($z)\nL_ONE:\nbeq $t0 $t2 L_TWO\nsub $s0 $s0 $s1\nadd $t0 $t0 $t1\njmp L_ONE\nL_TWO:\nor $s2 $s0 $t3\nand $s2 $s2 $s3\nsw $s2 4($t3)\nnop"
+
 
 -- UPDATE
 
