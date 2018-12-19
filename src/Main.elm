@@ -58,7 +58,7 @@ instructions = "# In this assembler labels and instructions must occupy their ow
         , "lw"
         , "sw"
         , "jmp"
-        ]) ++ "."
+        ])
 
 lab3 = "lw $t2 0($z)\nL_ONE:\nbeq $t0 $t2 L_TWO\nsub $s0 $s0 $s1\nadd $t0 $t0 $t1\njmp L_ONE\nL_TWO:\nor $s2 $s0 $t3\nand $s2 $s2 $s3\nsw $s2 4($t3)\nnop"
 lab4 = "add $t2 $t0 $t1\nsw $t2 0x0($zero)\nsub $t3 $t0 $t1\nsw $t2 0x0($zero)\nsw $t3 0x4($t3)\nsw $t3 0x4($t3)\nor $s2 $s0 $s1\nnop\nnop\nsw $s2 0xC($zero)\nnop\nnop"
