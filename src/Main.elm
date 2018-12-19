@@ -3,6 +3,7 @@ import Html exposing (Html, Attribute, div, input, text, textarea)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Parser exposing (..)
+import Dict exposing (Dict)
 
 
 -- MAIN
@@ -44,10 +45,14 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-  div []
-    [ div [] [text "$zero and $at work!!! -- Make the boo a Woo"]
-    , textarea [ cols 80, rows 30, placeholder "Assembly to assemble", value model.content, onInput Change ] []
-    , div [] [ text (assemble model.content) ]
+  div [ style "font-family" "Courier" ]
+    [ textarea [ cols 80
+               , rows 30
+               , placeholder "Assembly to assemble"
+               , value model.content
+               , onInput Change
+               ] []
+    , div [] <| List.map (\s -> div [] [ text s ]) (assemble model.content)
     ]
 
 -- Assemble
@@ -95,6 +100,7 @@ type Instruction
     = R RType
     | I IType
     | J JType
+    | Noop
     
 type AssemblyLine
     = AssemblyInstr Instruction
@@ -197,13 +203,14 @@ instruction =
         , succeed I |= itype
         , succeed I |= itypeBranch
         , succeed J |= jtype
+        , succeed Noop |. keyword "nop"
         ]
 
 assemblyline : Parser AssemblyLine
 assemblyline =
     oneOf
-        [ succeed AssemblyInstr |= instruction
-        , succeed AssemblyLabel |= target
+        [ succeed AssemblyInstr |= instruction |. end
+        , succeed AssemblyLabel |= target |. end
         ]
 
 liftOk : Result (List DeadEnd) AssemblyLine ->
@@ -229,9 +236,12 @@ program prog =
 instructionToString : Instruction -> String
 instructionToString instr =
     case instr of
-        R r -> r.name ++ " " ++ regToString r.rd ++ ", " ++ regToString r.rs ++ ", " ++ regToString r.rt
-        I i -> i.name ++ " " ++ regToString i.rt ++ " " ++ immToString i.imm ++ "(" ++ regToString i.rs ++ ")"
+        R r -> r.name ++ " " ++ regToString r.rd ++ ", " ++ regToString r.rs ++
+               ", " ++ regToString r.rt
+        I i -> i.name ++ " " ++ regToString i.rt ++ " " ++ immToString i.imm ++
+               "(" ++ regToString i.rs ++ ")"
         J j -> j.name ++ " " ++ immToString j.imm
+        Noop -> "nop"
 
 assemblyLineToString : AssemblyLine -> String
 assemblyLineToString line =
@@ -239,9 +249,117 @@ assemblyLineToString line =
         AssemblyInstr instr -> instructionToString instr
         AssemblyLabel l -> l
 
-assemble : String -> String
-assemble prog =
-  case program prog of
-      Just l -> String.join "\n" <| List.map assemblyLineToString l
-      Nothing -> ":("
+labelLines : List AssemblyLine -> List (String, Instruction)
+labelLines xs =
+    case xs of
+        [] -> []
+        (AssemblyLabel l)::(AssemblyInstr i)::zs -> (l, i)::labelLines zs
+        (AssemblyInstr i)::zs -> ("", i)::labelLines zs
+        (AssemblyLabel l)::zs -> (l, Noop)::labelLines zs
 
+buildLabelDict : List (String, Instruction) -> Dict String Int
+buildLabelDict xs =
+    let makePair = \i -> \(s, _) -> (s, i)
+    in
+        Dict.fromList <| List.indexedMap makePair xs
+
+nameToOpcode : String -> String
+nameToOpcode name =
+    case name of
+        "and" -> "000000" 
+        "or" -> "000000"
+        "add" -> "000000"
+        "sub" -> "000000"
+        "nor" -> "000000"
+        "slt" -> "000000"
+        "beq" -> "000100"
+        "lw" -> "100011"
+        "sw" -> "101011"
+        "jmp" -> "000010"
+        _ -> "Bad Instruction!"
+
+nameToFunct : String -> String
+nameToFunct name =
+    case name of
+        "and" -> "100100" 
+        "or" -> "100101"
+        "add" -> "100000"
+        "sub" -> "100010"
+        "nor" -> "100111"
+        "slt" -> "101010"
+        _ -> "Bad Instruction!"
+            
+translateRegister : Register -> String
+translateRegister (Reg x) =
+    if x < 32 then
+        unsignedToBinaryString 5 x
+    else
+        "Bad register name!"
+        
+translateR : RType -> String
+translateR r = nameToOpcode r.name ++
+               translateRegister r.rs ++
+               translateRegister r.rt ++
+               translateRegister r.rd ++
+               "00000" ++
+               nameToFunct r.name
+
+toBinaryString : Int -> Int -> String
+toBinaryString length value =
+    if value < 0 then
+        unsignedToBinaryString length ((2^length) + value)
+    else
+        unsignedToBinaryString length value
+
+unsignedToBinaryString : Int -> Int -> String
+unsignedToBinaryString length value =
+    case (length, value) of
+        (0, _) -> ""
+        (l, v) -> (toBinaryString (l - 1) (v // 2)) ++
+                  (String.fromInt <| modBy 2 v)
+                   
+translateI : Int -> Dict String Int -> IType -> String
+translateI pc labels i =
+    let immBin = 
+            case i.imm of
+                Value v -> toBinaryString 16 v
+                Label l -> case (Dict.get l labels) of
+                               Just x -> toBinaryString 16 (x - (pc + 1))
+                               Nothing -> "Bad target!"
+    in
+        nameToOpcode i.name ++
+        translateRegister i.rs ++
+        translateRegister i.rt ++
+        immBin
+
+translateJ : Dict String Int -> JType -> String
+translateJ labels j =
+    let immBin =
+            case j.imm of
+                Value v -> toBinaryString 26 v
+                Label l -> case (Dict.get l labels) of
+                               Just x -> toBinaryString 26 x
+                               Nothing -> "Bad target!"
+    in
+        nameToOpcode j.name ++
+        immBin
+
+translateInstruction : Dict String Int -> Int -> Instruction -> String
+translateInstruction labels pc instr =
+    case instr of
+        Noop -> "00000000000000000000000000000000"
+        R r -> translateR r
+        I i -> translateI pc labels i
+        J j -> translateJ labels j
+
+assemble : String -> List String
+assemble prog =
+    case program prog of
+        Just l ->
+            let
+                labeledLines = labelLines l
+                labels = buildLabelDict labeledLines
+                (_, instrs) = List.unzip labeledLines
+            in
+                List.indexedMap (translateInstruction labels) instrs
+        Nothing -> ["Error: Could not assemble program."]
