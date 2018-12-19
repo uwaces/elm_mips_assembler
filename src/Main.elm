@@ -155,7 +155,7 @@ label =
     getChompedString <|
         succeed ()
             |. chompIf Char.isAlpha
-            |. chompWhile (\c -> Char.isAlpha c)
+            |. chompWhile (\c -> Char.isAlphaNum c)
 
 target : Parser String
 target =
