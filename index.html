@@ -5509,6 +5509,28 @@ var author$project$Main$jtype = A2(
 					['jmp'])),
 			author$project$Main$spaces)),
 	author$project$Main$immediate);
+var author$project$Main$movToAdd = F2(
+	function (rd, rs) {
+		return {
+			name: 'add',
+			rd: rd,
+			rs: rs,
+			rt: author$project$Main$Reg(0)
+		};
+	});
+var author$project$Main$mov = A2(
+	elm$parser$Parser$keeper,
+	A2(
+		elm$parser$Parser$keeper,
+		A2(
+			elm$parser$Parser$ignorer,
+			A2(
+				elm$parser$Parser$ignorer,
+				elm$parser$Parser$succeed(author$project$Main$movToAdd),
+				elm$parser$Parser$keyword('mov')),
+			author$project$Main$spaces),
+		A2(elm$parser$Parser$ignorer, author$project$Main$register, author$project$Main$spaces)),
+	author$project$Main$register);
 var author$project$Main$RType = F4(
 	function (name, rd, rs, rt) {
 		return {name: name, rd: rd, rs: rs, rt: rt};
@@ -5535,7 +5557,9 @@ var author$project$Main$instruction = elm$parser$Parser$oneOf(
 			A2(
 			elm$parser$Parser$keeper,
 			elm$parser$Parser$succeed(author$project$Main$R),
-			author$project$Main$rtype),
+			elm$parser$Parser$oneOf(
+				_List_fromArray(
+					[author$project$Main$mov, author$project$Main$rtype]))),
 			A2(
 			elm$parser$Parser$keeper,
 			elm$parser$Parser$succeed(author$project$Main$I),
