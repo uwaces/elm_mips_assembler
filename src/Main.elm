@@ -198,10 +198,23 @@ rtype =
         |. spaces
         |= register
 
+movToAdd : Register -> Register -> RType
+movToAdd rd rs =
+    {name = "add", rd = rd, rs = rs, rt = Reg 0}
+           
+mov : Parser RType
+mov =
+    succeed movToAdd
+        |. keyword "mov"
+        |. spaces
+        |= register
+        |. spaces
+        |= register
+
 instruction : Parser Instruction
 instruction =
     oneOf
-        [ succeed R |= rtype
+        [ succeed R |= oneOf [ mov, rtype ]
         , succeed I |= itype
         , succeed I |= itypeBranch
         , succeed J |= jtype
