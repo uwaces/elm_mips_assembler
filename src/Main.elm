@@ -1,9 +1,10 @@
 import Browser
-import Html exposing (Html, Attribute, div, input, text, textarea)
+import Html exposing (Html, Attribute, div, input, text, textarea, button, h1)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Parser exposing (..)
 import Dict exposing (Dict)
+import Html.Events exposing (onClick)
 
 
 -- MAIN
@@ -27,14 +28,12 @@ init =
   { content = "" }
 
 
-assignment2 = "lw $t2 0($z)\nL_ONE:\nbeq $t0 $t2 L_TWO\nsub $s0 $s0 $s1\nadd $t0 $t0 $t1\njmp L_ONE\nL_TWO:\nor $s2 $s0 $t3\nand $s2 $s2 $s3\nsw $s2 4($t3)\nnop"
-
-
 -- UPDATE
 
 
 type Msg
   = Change String
+  | MakeExample String
 
 
 update : Msg -> Model -> Model
@@ -42,19 +41,36 @@ update msg model =
   case msg of
     Change newContent ->
       { model | content = newContent }
+    MakeExample newContent ->
+      { model | content = newContent }
 
 -- VIEW
 
+lab3 = "lw $t2 0($z)\nL_ONE:\nbeq $t0 $t2 L_TWO\nsub $s0 $s0 $s1\nadd $t0 $t0 $t1\njmp L_ONE\nL_TWO:\nor $s2 $s0 $t3\nand $s2 $s2 $s3\nsw $s2 4($t3)\nnop"
+lab4 = "add $t2 $t0 $t1\nsw $t2 0x0($zero)\nsub $t3 $t0 $t1\nsw $t2 0x0($zero)\nsw $t3 0x4($t3)\nsw $t3 0x4($t3)\nor $s2 $s0 $s1\nnop\nnop\nsw $s2 0xC($zero)\nnop\nnop"
+lab5 = "lw $t0 0x0($zero)\nadd $t0 $t0 $t0\nadd $t1 $t0 $t0\nsub $t2 $t1 $t0\nsw $t2 0x4($zero)\nsw $t2 0x6($zero)\nnop\nnop\nnop\nnop"
+lab6 = "beq $s0 $s1 L1\nadd $t0 $t0 $t0\nbeq $s2 $s3 L2\nadd $t1 $t1 $t1\nL1:\nadd $t2 $t2 $t2\nL2:\nadd $t3 $t3 $t3\nj exit\nadd $s0 $s0 $s0\nadd $s1 $s1 $s1\nnop\nnop\nnop\nnop"
+
 view : Model -> Html Msg
 view model =
-  div [ style "font-family" "Courier" ]
-    [ textarea [ cols 80
-               , rows 30
-               , placeholder "Assembly to assemble"
-               , value model.content
-               , onInput Change
-               ] []
-    , div [] <| List.map (\s -> div [] [ text s ]) (assemble model.content)
+  div [] 
+    [ div [ style "text-align" "center" ] [ h1 [] [ text "MIPS Assembler" ] ]
+    , div [ style "font-family" "Courier", style "margin" "auto", style "width" "50%", style "display" "flex" ]
+      [ div []  [ div [ style "margin" "10px" ] [ button [ onClick (MakeExample lab3) ] [ text "Lab3" ] ]
+                , div [ style "margin" "10px" ] [ button [ onClick (MakeExample lab4) ] [ text "Lab4" ] ]
+                , div [ style "margin" "10px" ] [ button [ onClick (MakeExample lab5) ] [ text "Lab5" ] ]
+                , div [ style "margin" "10px" ] [ button [ onClick (MakeExample lab6) ] [ text "Lab6" ] ]
+                ]
+      , textarea [ cols 80
+                 , rows 30
+                 , placeholder "Assembly to assemble"
+                 , value model.content
+                 , onInput Change
+                 , style "flex-grow" "1"
+                 , style "margin-left" "10px"
+                 ] []
+      , div [ style "flex-grow" "1", style "padding-left" "10px" ] <| List.map (\s -> div [] [ text s ]) (assemble model.content)
+      ]
     ]
 
 -- Assemble
@@ -240,7 +256,7 @@ liftOk r1 rlist =
                  
 program : String -> Maybe (List AssemblyLine)
 program prog =
-    let lines = String.split "\n" <| String.trim prog
+    let lines = List.filter (not << String.startsWith "#") (String.split "\n" <| String.trim prog)
         alines = List.map (run assemblyline) lines
         res = List.foldr liftOk (Ok []) alines
     in
