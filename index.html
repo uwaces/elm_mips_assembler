@@ -4643,14 +4643,14 @@ var elm$core$String$join = F2(
 			sep,
 			_List_toArray(chunks));
 	});
-var author$project$Main$instructions = '# In this assembler labels and instructions must occupy their own line\n# The valid register names are:\n# $[0-31] or $zero, $at, $v[0-1], $a[0-3], $t[0-9], $s[0-7], $k[0-1], $gp,  $sp, $fp, $ra\n# This also supports a variety of instructions:\n' + ('# ' + (A2(
+var author$project$Main$instructions = '# In this assembler labels and instructions must occupy their own line\n# The valid register names are:\n# $[0-31] or $zero, $at, $v[0-1], $a[0-3], $t[0-9], $s[0-7], $k[0-1], $gp,  $sp, $fp, $ra\n# This also supports a variety of instructions:\n' + ('# ' + A2(
 	elm$core$String$join,
 	'',
 	A2(
 		elm$core$List$intersperse,
 		', ',
 		_List_fromArray(
-			['and', 'or', 'add', 'sub', 'nor', 'slt', 'beq', 'lw', 'sw', 'jmp']))) + '.'));
+			['and', 'or', 'add', 'sub', 'nor', 'slt', 'beq', 'lw', 'sw', 'jmp', 'mov']))));
 var author$project$Main$init = {content: author$project$Main$instructions};
 var author$project$Main$update = F2(
 	function (msg, model) {
@@ -4922,6 +4922,13 @@ var elm$core$Char$isUpper = function (_char) {
 var elm$core$Char$isAlpha = function (_char) {
 	return elm$core$Char$isLower(_char) || elm$core$Char$isUpper(_char);
 };
+var elm$core$Char$isDigit = function (_char) {
+	var code = elm$core$Char$toCode(_char);
+	return (code <= 57) && (48 <= code);
+};
+var elm$core$Char$isAlphaNum = function (_char) {
+	return elm$core$Char$isLower(_char) || (elm$core$Char$isUpper(_char) || elm$core$Char$isDigit(_char));
+};
 var elm$parser$Parser$UnexpectedChar = {$: 'UnexpectedChar'};
 var elm$core$Basics$False = {$: 'False'};
 var elm$core$Basics$True = {$: 'True'};
@@ -5118,7 +5125,7 @@ var author$project$Main$label = elm$parser$Parser$getChompedString(
 			elm$parser$Parser$chompIf(elm$core$Char$isAlpha)),
 		elm$parser$Parser$chompWhile(
 			function (c) {
-				return elm$core$Char$isAlpha(c);
+				return elm$core$Char$isAlphaNum(c);
 			})));
 var elm$parser$Parser$ExpectingInt = {$: 'ExpectingInt'};
 var elm$core$Result$Err = function (a) {
@@ -5360,13 +5367,6 @@ var elm$parser$Parser$Advanced$Token = F2(
 		return {$: 'Token', a: a, b: b};
 	});
 var elm$core$Basics$not = _Basics_not;
-var elm$core$Char$isDigit = function (_char) {
-	var code = elm$core$Char$toCode(_char);
-	return (code <= 57) && (48 <= code);
-};
-var elm$core$Char$isAlphaNum = function (_char) {
-	return elm$core$Char$isLower(_char) || (elm$core$Char$isUpper(_char) || elm$core$Char$isDigit(_char));
-};
 var elm$core$String$isEmpty = function (string) {
 	return string === '';
 };
