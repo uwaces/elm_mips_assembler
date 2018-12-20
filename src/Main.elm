@@ -46,7 +46,7 @@ update msg model =
 
 -- VIEW
 
-instructions = "# In this assembler labels and instructions must occupy their own line\n# The valid register names are:\n# $[0-31] or $zero, $at, $v[0-1], $a[0-3], $t[0-9], $s[0-7], $k[0-1], $gp,  $sp, $fp, $ra\n# This also supports a variety of instructions:\n"
+instructions = "# In this assembler labels and instructions must occupy their own line\n# All numeric literals must be decimal\n# The valid register names are:\n# $[0-31] or $zero, $at, $v[0-1], $a[0-3], $t[0-9], $s[0-7], $k[0-1], $gp,  $sp, $fp, $ra\n# This also supports a variety of instructions:\n"
       ++ "# " ++ (String.join "" <| List.intersperse ", "
         [ "and"
         , "or"
