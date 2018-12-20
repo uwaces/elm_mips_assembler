@@ -60,11 +60,12 @@ instructions = "# In this assembler labels and instructions must occupy their ow
         , "jmp"
         , "mov"
         ])
+      ++ "\n# Make sure to disable extensions that effect text boxes / areas (e.g. Grammarly)!"
 
-lab3 = "lw $t2 0($z)\nL_ONE:\nbeq $t0 $t2 L_TWO\nsub $s0 $s0 $s1\nadd $t0 $t0 $t1\njmp L_ONE\nL_TWO:\nor $s2 $s0 $t3\nand $s2 $s2 $s3\nsw $s2 4($t3)\nnop"
+lab3 = "lw $t2 0($zero)\nL_ONE:\nbeq $t0 $t2 L_TWO\nsub $s0 $s0 $s1\nadd $t0 $t0 $t1\njmp L_ONE\nL_TWO:\nor $s2 $s0 $t3\nand $s2 $s2 $s3\nsw $s2 4($t3)\nnop"
 lab4 = "add $t2 $t0 $t1\nsw $t2 0($zero)\nsub $t3 $t0 $t1\nsw $t2 0($zero)\nsw $t3 4($t3)\nsw $t3 4($t3)\nor $s2 $s0 $s1\nnop\nnop\nsw $s2 12($zero)\nnop\nnop"
 lab5 = "lw $t0 0($zero)\nadd $t0 $t0 $t0\nadd $t1 $t0 $t0\nsub $t2 $t1 $t0\nsw $t2 4($zero)\nsw $t2 6($zero)\nnop\nnop\nnop\nnop"
-lab6 = "beq $s0 $s1 L_ONE\nadd $t0 $t0 $t0\nbeq $s2 $s3 L2\nadd $t1 $t1 $t1\nL_ONE:\nadd $t2 $t2 $t2\nL2:\nadd $t3 $t3 $t3\nj exit\nadd $s0 $s0 $s0\nadd $s1 $s1 $s1\nnop\nnop\nnop\nnop"
+lab6 = "beq $s0 $s1 L1\nadd $t0 $t0 $t0\nbeq $s2 $s3 L2\nadd $t1 $t1 $t1\nL1:\nadd $t2 $t2 $t2\nL2:\nadd $t3 $t3 $t3\njmp exit\nadd $s0 $s0 $s0\nexit:\nadd $s1 $s1 $s1\nnop\nnop\nnop\nnop"
 
 view : Model -> Html Msg
 view model =
@@ -93,19 +94,9 @@ type Immediate
     = Label String
     | Value Int
 
-immToString : Immediate -> String
-immToString i =
-    case i of
-        Label l -> l
-        Value v -> String.fromInt v
-
 type Register
-  = Reg Int
-
-regToString : Register -> String
-regToString r =
-    case r of
-        Reg x -> String.fromInt x
+  = RegNumerical Int
+  | RegNamed String
 
 type alias RType =
     { name : String
@@ -147,16 +138,19 @@ spaces =
 
 register : Parser Register
 register =
-    succeed Reg
+    succeed identity
         |. symbol "$"
-        |= int
+        |=    oneOf
+              [ succeed RegNamed |= label
+              , succeed RegNumerical |= int
+              ]
 
 label : Parser String
 label =
     getChompedString <|
         succeed ()
             |. chompIf Char.isAlpha
-            |. chompWhile (\c -> Char.isAlphaNum c)
+            |. chompWhile (\c -> Char.isAlphaNum c || c == '_')
 
 target : Parser String
 target =
@@ -167,7 +161,7 @@ target =
 immediate : Parser Immediate
 immediate =
     oneOf
-        [ succeed Value |= int
+        [ succeed Value |= backtrackable int
         , succeed Label |= label
         ]
 
@@ -231,7 +225,7 @@ rtype =
 
 movToAdd : Register -> Register -> RType
 movToAdd rd rs =
-    {name = "add", rd = rd, rs = rs, rt = Reg 0}
+    {name = "add", rd = rd, rs = rs, rt = RegNumerical 0}
            
 mov : Parser RType
 mov =
@@ -279,22 +273,6 @@ program prog =
             Ok l -> Just l
             Err _ -> Nothing
 
-instructionToString : Instruction -> String
-instructionToString instr =
-    case instr of
-        R r -> r.name ++ " " ++ regToString r.rd ++ ", " ++ regToString r.rs ++
-               ", " ++ regToString r.rt
-        I i -> i.name ++ " " ++ regToString i.rt ++ " " ++ immToString i.imm ++
-               "(" ++ regToString i.rs ++ ")"
-        J j -> j.name ++ " " ++ immToString j.imm
-        Noop -> "nop"
-
-assemblyLineToString : AssemblyLine -> String
-assemblyLineToString line =
-    case line of
-        AssemblyInstr instr -> instructionToString instr
-        AssemblyLabel l -> l
-
 labelLines : List AssemblyLine -> List (String, Instruction)
 labelLines xs =
     case xs of
@@ -322,7 +300,7 @@ nameToOpcode name =
         "lw" -> "100011"
         "sw" -> "101011"
         "jmp" -> "000010"
-        _ -> "Bad Instruction!"
+        _ -> "Bad instruction!"
 
 nameToFunct : String -> String
 nameToFunct name =
@@ -333,14 +311,59 @@ nameToFunct name =
         "sub" -> "100010"
         "nor" -> "100111"
         "slt" -> "101010"
-        _ -> "Bad Instruction!"
-            
+        _ -> "Bad instruction!"
+
+namedRegToNumerical : String -> Int
+namedRegToNumerical n =
+    case n of
+        "zero" -> 0
+        "at" -> 1
+        "v0" -> 2
+        "v1" -> 3
+        "a0" -> 4
+        "a1" -> 5
+        "a2" -> 6
+        "a3" -> 7
+        "t0" -> 8
+        "t1" -> 9
+        "t2" -> 10
+        "t3" -> 11
+        "t4" -> 12
+        "t5" -> 13
+        "t6" -> 14
+        "t7" -> 15
+        "s0" -> 16
+        "s1" -> 17
+        "s2" -> 18
+        "s3" -> 19
+        "s4" -> 20
+        "s5" -> 21
+        "s6" -> 22
+        "s7" -> 23
+        "t8" -> 24
+        "t9" -> 25
+        "k0" -> 26
+        "k1" -> 27
+        "gp" -> 28
+        "sp" -> 29
+        "fp" -> 30
+        "ra" -> 31
+        _ -> 32
+                
 translateRegister : Register -> String
-translateRegister (Reg x) =
-    if x < 32 then
-        unsignedToBinaryString 5 x
-    else
-        "Bad register name!"
+translateRegister r =
+    case r of
+        RegNumerical x -> if x < 32 then
+                              unsignedToBinaryString 5 x
+                          else
+                              "Bad register name!"
+        RegNamed n ->
+            let regNum = namedRegToNumerical n
+            in
+                if regNum < 32 then
+                    unsignedToBinaryString 5 regNum
+                else
+                    "Bad register name!"
         
 translateR : RType -> String
 translateR r = nameToOpcode r.name ++

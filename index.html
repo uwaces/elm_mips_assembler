@@ -4643,14 +4643,14 @@ var elm$core$String$join = F2(
 			sep,
 			_List_toArray(chunks));
 	});
-var author$project$Main$instructions = '# In this assembler labels and instructions must occupy their own line\n# All numeric literals must be decimal\n# The valid register names are:\n# $[0-31] or $zero, $at, $v[0-1], $a[0-3], $t[0-9], $s[0-7], $k[0-1], $gp,  $sp, $fp, $ra\n# This also supports a variety of instructions:\n' + ('# ' + A2(
+var author$project$Main$instructions = '# In this assembler labels and instructions must occupy their own line\n# All numeric literals must be decimal\n# The valid register names are:\n# $[0-31] or $zero, $at, $v[0-1], $a[0-3], $t[0-9], $s[0-7], $k[0-1], $gp,  $sp, $fp, $ra\n# This also supports a variety of instructions:\n' + ('# ' + (A2(
 	elm$core$String$join,
 	'',
 	A2(
 		elm$core$List$intersperse,
 		', ',
 		_List_fromArray(
-			['and', 'or', 'add', 'sub', 'nor', 'slt', 'beq', 'lw', 'sw', 'jmp', 'mov']))));
+			['and', 'or', 'add', 'sub', 'nor', 'slt', 'beq', 'lw', 'sw', 'jmp', 'mov']))) + '\n# Make sure to disable extensions that effect text boxes / areas (e.g. Grammarly)!'));
 var author$project$Main$init = {content: author$project$Main$instructions};
 var author$project$Main$update = F2(
 	function (msg, model) {
@@ -4908,6 +4908,7 @@ var author$project$Main$Label = function (a) {
 var author$project$Main$Value = function (a) {
 	return {$: 'Value', a: a};
 };
+var elm$core$Basics$eq = _Utils_equal;
 var elm$core$Basics$or = _Basics_or;
 var elm$core$Basics$and = _Basics_and;
 var elm$core$Char$toCode = _Char_toCode;
@@ -4932,7 +4933,6 @@ var elm$core$Char$isAlphaNum = function (_char) {
 var elm$parser$Parser$UnexpectedChar = {$: 'UnexpectedChar'};
 var elm$core$Basics$False = {$: 'False'};
 var elm$core$Basics$True = {$: 'True'};
-var elm$core$Basics$eq = _Utils_equal;
 var elm$core$Basics$identity = function (x) {
 	return x;
 };
@@ -5125,8 +5125,26 @@ var author$project$Main$label = elm$parser$Parser$getChompedString(
 			elm$parser$Parser$chompIf(elm$core$Char$isAlpha)),
 		elm$parser$Parser$chompWhile(
 			function (c) {
-				return elm$core$Char$isAlphaNum(c);
+				return elm$core$Char$isAlphaNum(c) || _Utils_eq(
+					c,
+					_Utils_chr('_'));
 			})));
+var elm$parser$Parser$Advanced$backtrackable = function (_n0) {
+	var parse = _n0.a;
+	return elm$parser$Parser$Advanced$Parser(
+		function (s0) {
+			var _n1 = parse(s0);
+			if (_n1.$ === 'Bad') {
+				var x = _n1.b;
+				return A2(elm$parser$Parser$Advanced$Bad, false, x);
+			} else {
+				var a = _n1.b;
+				var s1 = _n1.c;
+				return A3(elm$parser$Parser$Advanced$Good, false, a, s1);
+			}
+		});
+};
+var elm$parser$Parser$backtrackable = elm$parser$Parser$Advanced$backtrackable;
 var elm$parser$Parser$ExpectingInt = {$: 'ExpectingInt'};
 var elm$core$Result$Err = function (a) {
 	return {$: 'Err', a: a};
@@ -5353,7 +5371,7 @@ var author$project$Main$immediate = elm$parser$Parser$oneOf(
 			A2(
 			elm$parser$Parser$keeper,
 			elm$parser$Parser$succeed(author$project$Main$Value),
-			elm$parser$Parser$int),
+			elm$parser$Parser$backtrackable(elm$parser$Parser$int)),
 			A2(
 			elm$parser$Parser$keeper,
 			elm$parser$Parser$succeed(author$project$Main$Label),
@@ -5433,8 +5451,11 @@ var author$project$Main$makeOperation = function (ops) {
 	return elm$parser$Parser$oneOf(
 		A2(elm$core$List$map, author$project$Main$makeOpParser, ops));
 };
-var author$project$Main$Reg = function (a) {
-	return {$: 'Reg', a: a};
+var author$project$Main$RegNamed = function (a) {
+	return {$: 'RegNamed', a: a};
+};
+var author$project$Main$RegNumerical = function (a) {
+	return {$: 'RegNumerical', a: a};
 };
 var elm$parser$Parser$ExpectingSymbol = function (a) {
 	return {$: 'ExpectingSymbol', a: a};
@@ -5471,9 +5492,20 @@ var author$project$Main$register = A2(
 	elm$parser$Parser$keeper,
 	A2(
 		elm$parser$Parser$ignorer,
-		elm$parser$Parser$succeed(author$project$Main$Reg),
+		elm$parser$Parser$succeed(elm$core$Basics$identity),
 		elm$parser$Parser$symbol('$')),
-	elm$parser$Parser$int);
+	elm$parser$Parser$oneOf(
+		_List_fromArray(
+			[
+				A2(
+				elm$parser$Parser$keeper,
+				elm$parser$Parser$succeed(author$project$Main$RegNamed),
+				author$project$Main$label),
+				A2(
+				elm$parser$Parser$keeper,
+				elm$parser$Parser$succeed(author$project$Main$RegNumerical),
+				elm$parser$Parser$int)
+			])));
 var author$project$Main$spaces = A2(
 	elm$parser$Parser$ignorer,
 	A2(
@@ -5559,7 +5591,7 @@ var author$project$Main$movToAdd = F2(
 			name: 'add',
 			rd: rd,
 			rs: rs,
-			rt: author$project$Main$Reg(0)
+			rt: author$project$Main$RegNumerical(0)
 		};
 	});
 var author$project$Main$mov = A2(
@@ -5803,7 +5835,7 @@ var author$project$Main$nameToOpcode = function (name) {
 		case 'jmp':
 			return '000010';
 		default:
-			return 'Bad Instruction!';
+			return 'Bad instruction!';
 	}
 };
 var elm$core$Basics$idiv = _Basics_idiv;
@@ -5831,9 +5863,85 @@ var author$project$Main$unsignedToBinaryString = F2(
 					A2(elm$core$Basics$modBy, 2, v)));
 		}
 	});
-var author$project$Main$translateRegister = function (_n0) {
-	var x = _n0.a;
-	return (x < 32) ? A2(author$project$Main$unsignedToBinaryString, 5, x) : 'Bad register name!';
+var author$project$Main$namedRegToNumerical = function (n) {
+	switch (n) {
+		case 'zero':
+			return 0;
+		case 'at':
+			return 1;
+		case 'v0':
+			return 2;
+		case 'v1':
+			return 3;
+		case 'a0':
+			return 4;
+		case 'a1':
+			return 5;
+		case 'a2':
+			return 6;
+		case 'a3':
+			return 7;
+		case 't0':
+			return 8;
+		case 't1':
+			return 9;
+		case 't2':
+			return 10;
+		case 't3':
+			return 11;
+		case 't4':
+			return 12;
+		case 't5':
+			return 13;
+		case 't6':
+			return 14;
+		case 't7':
+			return 15;
+		case 's0':
+			return 16;
+		case 's1':
+			return 17;
+		case 's2':
+			return 18;
+		case 's3':
+			return 19;
+		case 's4':
+			return 20;
+		case 's5':
+			return 21;
+		case 's6':
+			return 22;
+		case 's7':
+			return 23;
+		case 't8':
+			return 24;
+		case 't9':
+			return 25;
+		case 'k0':
+			return 26;
+		case 'k1':
+			return 27;
+		case 'gp':
+			return 28;
+		case 'sp':
+			return 29;
+		case 'fp':
+			return 30;
+		case 'ra':
+			return 31;
+		default:
+			return 32;
+	}
+};
+var author$project$Main$translateRegister = function (r) {
+	if (r.$ === 'RegNumerical') {
+		var x = r.a;
+		return (x < 32) ? A2(author$project$Main$unsignedToBinaryString, 5, x) : 'Bad register name!';
+	} else {
+		var n = r.a;
+		var regNum = author$project$Main$namedRegToNumerical(n);
+		return (regNum < 32) ? A2(author$project$Main$unsignedToBinaryString, 5, regNum) : 'Bad register name!';
+	}
 };
 var elm$core$Dict$get = F2(
 	function (targetKey, dict) {
@@ -5929,7 +6037,7 @@ var author$project$Main$nameToFunct = function (name) {
 		case 'slt':
 			return '101010';
 		default:
-			return 'Bad Instruction!';
+			return 'Bad instruction!';
 	}
 };
 var author$project$Main$translateR = function (r) {
@@ -5985,10 +6093,10 @@ var author$project$Main$assemble = function (prog) {
 			['Error: Could not assemble program.']);
 	}
 };
-var author$project$Main$lab3 = 'lw $t2 0($z)\nL_ONE:\nbeq $t0 $t2 L_TWO\nsub $s0 $s0 $s1\nadd $t0 $t0 $t1\njmp L_ONE\nL_TWO:\nor $s2 $s0 $t3\nand $s2 $s2 $s3\nsw $s2 4($t3)\nnop';
+var author$project$Main$lab3 = 'lw $t2 0($zero)\nL_ONE:\nbeq $t0 $t2 L_TWO\nsub $s0 $s0 $s1\nadd $t0 $t0 $t1\njmp L_ONE\nL_TWO:\nor $s2 $s0 $t3\nand $s2 $s2 $s3\nsw $s2 4($t3)\nnop';
 var author$project$Main$lab4 = 'add $t2 $t0 $t1\nsw $t2 0($zero)\nsub $t3 $t0 $t1\nsw $t2 0($zero)\nsw $t3 4($t3)\nsw $t3 4($t3)\nor $s2 $s0 $s1\nnop\nnop\nsw $s2 12($zero)\nnop\nnop';
 var author$project$Main$lab5 = 'lw $t0 0($zero)\nadd $t0 $t0 $t0\nadd $t1 $t0 $t0\nsub $t2 $t1 $t0\nsw $t2 4($zero)\nsw $t2 6($zero)\nnop\nnop\nnop\nnop';
-var author$project$Main$lab6 = 'beq $s0 $s1 L_ONE\nadd $t0 $t0 $t0\nbeq $s2 $s3 L2\nadd $t1 $t1 $t1\nL_ONE:\nadd $t2 $t2 $t2\nL2:\nadd $t3 $t3 $t3\nj exit\nadd $s0 $s0 $s0\nadd $s1 $s1 $s1\nnop\nnop\nnop\nnop';
+var author$project$Main$lab6 = 'beq $s0 $s1 L1\nadd $t0 $t0 $t0\nbeq $s2 $s3 L2\nadd $t1 $t1 $t1\nL1:\nadd $t2 $t2 $t2\nL2:\nadd $t3 $t3 $t3\njmp exit\nadd $s0 $s0 $s0\nexit:\nadd $s1 $s1 $s1\nnop\nnop\nnop\nnop';
 var elm$core$Result$isOk = function (result) {
 	if (result.$ === 'Ok') {
 		return true;
