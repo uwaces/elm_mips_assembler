@@ -60,11 +60,12 @@ instructions = "# In this assembler labels and instructions must occupy their ow
         , "jmp"
         , "mov"
         ])
+      ++ "\n# Make sure to disable extensions that effect text boxes / areas (e.g. Grammarly)!"
 
 lab3 = "lw $t2 0($zero)\nL_ONE:\nbeq $t0 $t2 L_TWO\nsub $s0 $s0 $s1\nadd $t0 $t0 $t1\njmp L_ONE\nL_TWO:\nor $s2 $s0 $t3\nand $s2 $s2 $s3\nsw $s2 4($t3)\nnop"
 lab4 = "add $t2 $t0 $t1\nsw $t2 0($zero)\nsub $t3 $t0 $t1\nsw $t2 0($zero)\nsw $t3 4($t3)\nsw $t3 4($t3)\nor $s2 $s0 $s1\nnop\nnop\nsw $s2 12($zero)\nnop\nnop"
 lab5 = "lw $t0 0($zero)\nadd $t0 $t0 $t0\nadd $t1 $t0 $t0\nsub $t2 $t1 $t0\nsw $t2 4($zero)\nsw $t2 6($zero)\nnop\nnop\nnop\nnop"
-lab6 = "beq $s0 $s1 L1\nadd $t0 $t0 $t0\nbeq $s2 $s3 L2\nadd $t1 $t1 $t1\nL1:\nadd $t2 $t2 $t2\nL2:\nadd $t3 $t3 $t3\nj exit\nadd $s0 $s0 $s0\nadd $s1 $s1 $s1\nnop\nnop\nnop\nnop"
+lab6 = "beq $s0 $s1 L1\nadd $t0 $t0 $t0\nbeq $s2 $s3 L2\nadd $t1 $t1 $t1\nL1:\nadd $t2 $t2 $t2\nL2:\nadd $t3 $t3 $t3\njmp exit\nadd $s0 $s0 $s0\nexit:\nadd $s1 $s1 $s1\nnop\nnop\nnop\nnop"
 
 view : Model -> Html Msg
 view model =
@@ -160,7 +161,7 @@ target =
 immediate : Parser Immediate
 immediate =
     oneOf
-        [ succeed Value |= int
+        [ succeed Value |= backtrackable int
         , succeed Label |= label
         ]
 

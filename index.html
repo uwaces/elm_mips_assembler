@@ -4643,14 +4643,14 @@ var elm$core$String$join = F2(
 			sep,
 			_List_toArray(chunks));
 	});
-var author$project$Main$instructions = '# In this assembler labels and instructions must occupy their own line\n# All numeric literals must be decimal\n# The valid register names are:\n# $[0-31] or $zero, $at, $v[0-1], $a[0-3], $t[0-9], $s[0-7], $k[0-1], $gp,  $sp, $fp, $ra\n# This also supports a variety of instructions:\n' + ('# ' + A2(
+var author$project$Main$instructions = '# In this assembler labels and instructions must occupy their own line\n# All numeric literals must be decimal\n# The valid register names are:\n# $[0-31] or $zero, $at, $v[0-1], $a[0-3], $t[0-9], $s[0-7], $k[0-1], $gp,  $sp, $fp, $ra\n# This also supports a variety of instructions:\n' + ('# ' + (A2(
 	elm$core$String$join,
 	'',
 	A2(
 		elm$core$List$intersperse,
 		', ',
 		_List_fromArray(
-			['and', 'or', 'add', 'sub', 'nor', 'slt', 'beq', 'lw', 'sw', 'jmp', 'mov']))));
+			['and', 'or', 'add', 'sub', 'nor', 'slt', 'beq', 'lw', 'sw', 'jmp', 'mov']))) + '\n# Make sure to disable extensions that effect text boxes / areas (e.g. Grammarly)!'));
 var author$project$Main$init = {content: author$project$Main$instructions};
 var author$project$Main$update = F2(
 	function (msg, model) {
@@ -5129,6 +5129,22 @@ var author$project$Main$label = elm$parser$Parser$getChompedString(
 					c,
 					_Utils_chr('_'));
 			})));
+var elm$parser$Parser$Advanced$backtrackable = function (_n0) {
+	var parse = _n0.a;
+	return elm$parser$Parser$Advanced$Parser(
+		function (s0) {
+			var _n1 = parse(s0);
+			if (_n1.$ === 'Bad') {
+				var x = _n1.b;
+				return A2(elm$parser$Parser$Advanced$Bad, false, x);
+			} else {
+				var a = _n1.b;
+				var s1 = _n1.c;
+				return A3(elm$parser$Parser$Advanced$Good, false, a, s1);
+			}
+		});
+};
+var elm$parser$Parser$backtrackable = elm$parser$Parser$Advanced$backtrackable;
 var elm$parser$Parser$ExpectingInt = {$: 'ExpectingInt'};
 var elm$core$Result$Err = function (a) {
 	return {$: 'Err', a: a};
@@ -5355,7 +5371,7 @@ var author$project$Main$immediate = elm$parser$Parser$oneOf(
 			A2(
 			elm$parser$Parser$keeper,
 			elm$parser$Parser$succeed(author$project$Main$Value),
-			elm$parser$Parser$int),
+			elm$parser$Parser$backtrackable(elm$parser$Parser$int)),
 			A2(
 			elm$parser$Parser$keeper,
 			elm$parser$Parser$succeed(author$project$Main$Label),
@@ -6077,10 +6093,10 @@ var author$project$Main$assemble = function (prog) {
 			['Error: Could not assemble program.']);
 	}
 };
-var author$project$Main$lab3 = 'lw $t2 0($z)\nL_ONE:\nbeq $t0 $t2 L_TWO\nsub $s0 $s0 $s1\nadd $t0 $t0 $t1\njmp L_ONE\nL_TWO:\nor $s2 $s0 $t3\nand $s2 $s2 $s3\nsw $s2 4($t3)\nnop';
+var author$project$Main$lab3 = 'lw $t2 0($zero)\nL_ONE:\nbeq $t0 $t2 L_TWO\nsub $s0 $s0 $s1\nadd $t0 $t0 $t1\njmp L_ONE\nL_TWO:\nor $s2 $s0 $t3\nand $s2 $s2 $s3\nsw $s2 4($t3)\nnop';
 var author$project$Main$lab4 = 'add $t2 $t0 $t1\nsw $t2 0($zero)\nsub $t3 $t0 $t1\nsw $t2 0($zero)\nsw $t3 4($t3)\nsw $t3 4($t3)\nor $s2 $s0 $s1\nnop\nnop\nsw $s2 12($zero)\nnop\nnop';
 var author$project$Main$lab5 = 'lw $t0 0($zero)\nadd $t0 $t0 $t0\nadd $t1 $t0 $t0\nsub $t2 $t1 $t0\nsw $t2 4($zero)\nsw $t2 6($zero)\nnop\nnop\nnop\nnop';
-var author$project$Main$lab6 = 'beq $s0 $s1 L_ONE\nadd $t0 $t0 $t0\nbeq $s2 $s3 L2\nadd $t1 $t1 $t1\nL_ONE:\nadd $t2 $t2 $t2\nL2:\nadd $t3 $t3 $t3\nj exit\nadd $s0 $s0 $s0\nadd $s1 $s1 $s1\nnop\nnop\nnop\nnop';
+var author$project$Main$lab6 = 'beq $s0 $s1 L1\nadd $t0 $t0 $t0\nbeq $s2 $s3 L2\nadd $t1 $t1 $t1\nL1:\nadd $t2 $t2 $t2\nL2:\nadd $t3 $t3 $t3\njmp exit\nadd $s0 $s0 $s0\nexit:\nadd $s1 $s1 $s1\nnop\nnop\nnop\nnop';
 var elm$core$Result$isOk = function (result) {
 	if (result.$ === 'Ok') {
 		return true;
