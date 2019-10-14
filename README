@@ -1,6 +1,5 @@
-MIPS Assembler
+# MIPS Assembler
 By: Harrison Kaiser and Chris Phifer
-------------------------------------
 
 For our final project, we implemented a MIPS assembler using the Elm programming
 language (a compile-to-JavaScript ML-like language with a strong static type
